@@ -13,6 +13,15 @@ export type IcnuScores = {
   urgency: number;
 };
 
+export type CaptureDebug = {
+  inputTranscript: string;
+  source: 'gemini' | 'fallback';
+  model: string;
+  capturedAt: string;
+  geminiRawText: string | null;
+  geminiRawResponse: string | null;
+};
+
 export type Task = {
   id: string;
   taskName: string;
@@ -25,4 +34,5 @@ export type Task = {
   oraclePlacement: OraclePlacement;
   status: TaskStatus;
   createdAt: string;
+  captureDebug?: CaptureDebug;
 };

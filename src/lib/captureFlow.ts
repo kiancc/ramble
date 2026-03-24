@@ -1,10 +1,11 @@
-import type { OraclePlacement, Task } from '../types/task';
+import type { CaptureDebug, OraclePlacement, Task } from '../types/task';
 
 const INTEREST_KEYWORDS = ['stripe', 'feature', 'project', 'fyp', 'build', 'interview'];
 const CHALLENGE_KEYWORDS = ['implement', 'debug', 'design', 'pipeline', 'refactor'];
 const NOVELTY_KEYWORDS = ['new', 'idea', 'explore', 'prototype', 'experiment'];
 const URGENT_KEYWORDS = ['urgent', 'asap', 'today', 'tonight', 'tomorrow', 'deadline'];
 const GEMINI_API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent';
+const GEMINI_MODEL_NAME = 'gemini-2.5-flash';
 
 const SYSTEM_PROMPT = `You are an expert Executive Function Assistant designed for an ADHD user. Your job is to take messy, rambling, stream-of-consciousness voice-to-text transcriptions and extract structured, actionable data based on the ICNU framework.
 
@@ -53,7 +54,7 @@ function buildTaskId() {
   return `task-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
 }
 
-function normalizeGeminiTask(schema: GeminiTaskSchema): Task {
+function normalizeGeminiTask(schema: GeminiTaskSchema, captureDebug: CaptureDebug): Task {
   return {
     id: buildTaskId(),
     taskName: schema.task_name.trim() || 'Captured task',
@@ -71,6 +72,7 @@ function normalizeGeminiTask(schema: GeminiTaskSchema): Task {
     oraclePlacement: schema.oracle_placement,
     status: schema.status,
     createdAt: new Date().toISOString(),
+    captureDebug,
   };
 }
 
@@ -185,7 +187,17 @@ async function createTaskViaGemini(ramble: string): Promise<Task> {
 
   const rawTask = parseJsonPayload(text);
   const normalized = toGeminiTaskSchema(rawTask);
-  return normalizeGeminiTask(normalized);
+
+  const captureDebug: CaptureDebug = {
+    inputTranscript: ramble,
+    source: 'gemini',
+    model: GEMINI_MODEL_NAME,
+    capturedAt: new Date().toISOString(),
+    geminiRawText: text,
+    geminiRawResponse: JSON.stringify(result),
+  };
+
+  return normalizeGeminiTask(normalized, captureDebug);
 }
 
 function hasKeyword(text: string, keywords: string[]) {
@@ -349,6 +361,14 @@ function buildTaskFromRamble(ramble: string): Task {
     oraclePlacement: inferPlacement(urgency, energyLevel, interest, challenge),
     status: 'To Do',
     createdAt: new Date().toISOString(),
+    captureDebug: {
+      inputTranscript: ramble,
+      source: 'fallback',
+      model: 'local-heuristic-v1',
+      capturedAt: new Date().toISOString(),
+      geminiRawText: null,
+      geminiRawResponse: null,
+    },
   };
 }
 

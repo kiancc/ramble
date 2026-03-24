@@ -30,6 +30,19 @@ function formatDate(value: string | null) {
   return new Date(value).toLocaleString();
 }
 
+function formatJson(value: string | null) {
+  if (!value) {
+    return 'null';
+  }
+
+  try {
+    const parsed = JSON.parse(value);
+    return JSON.stringify(parsed, null, 2);
+  } catch {
+    return value;
+  }
+}
+
 export function TaskDetailModal({ task, visible, onClose }: TaskDetailModalProps) {
   if (!task) {
     return null;
@@ -59,6 +72,29 @@ export function TaskDetailModal({ task, visible, onClose }: TaskDetailModalProps
             <FieldRow label="deadline" value={formatDate(task.deadline)} />
             <FieldRow label="createdAt" value={formatDate(task.createdAt)} />
             <FieldRow label="nextPhysicalAction" value={task.nextPhysicalAction} />
+
+            <View style={styles.row}>
+              <Text style={styles.rowLabel}>captureDebug</Text>
+              {task.captureDebug ? (
+                <View style={styles.icnuCard}>
+                  <Text style={styles.icnuText}>source: {task.captureDebug.source}</Text>
+                  <Text style={styles.icnuText}>model: {task.captureDebug.model}</Text>
+                  <Text style={styles.icnuText}>
+                    capturedAt: {formatDate(task.captureDebug.capturedAt)}
+                  </Text>
+                  <Text style={styles.icnuText}>inputTranscript:</Text>
+                  <Text style={styles.debugBlock}>{task.captureDebug.inputTranscript}</Text>
+                  <Text style={styles.icnuText}>geminiRawText:</Text>
+                  <Text style={styles.debugBlock}>{task.captureDebug.geminiRawText ?? 'null'}</Text>
+                  <Text style={styles.icnuText}>geminiRawResponse:</Text>
+                  <Text style={styles.debugBlock}>
+                    {formatJson(task.captureDebug.geminiRawResponse)}
+                  </Text>
+                </View>
+              ) : (
+                <Text style={styles.rowValue}>null</Text>
+              )}
+            </View>
 
             <View style={styles.row}>
               <Text style={styles.rowLabel}>icnuScores</Text>
@@ -161,5 +197,16 @@ const styles = StyleSheet.create({
   icnuText: {
     fontSize: 14,
     color: '#2d2617',
+  },
+  debugBlock: {
+    fontSize: 12,
+    color: '#2d2617',
+    lineHeight: 18,
+    backgroundColor: '#fffdf8',
+    borderWidth: 1,
+    borderColor: '#d9ceb6',
+    borderRadius: 8,
+    paddingHorizontal: 8,
+    paddingVertical: 6,
   },
 });
