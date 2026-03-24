@@ -7,6 +7,7 @@ import type { OraclePlacement, Task } from '../types/task';
 type OracleScreenProps = {
   tasks: Task[];
   onCaptureSubmit: (ramble: string) => Promise<void>;
+  onMarkTaskDone: (taskId: string) => void;
 };
 
 type OracleSection = {
@@ -29,7 +30,7 @@ const oracleSections: OracleSection[] = [
   },
 ];
 
-export function OracleScreen({ tasks, onCaptureSubmit }: OracleScreenProps) {
+export function OracleScreen({ tasks, onCaptureSubmit, onMarkTaskDone }: OracleScreenProps) {
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const [captureText, setCaptureText] = useState('');
   const [isSending, setIsSending] = useState(false);
@@ -131,6 +132,10 @@ export function OracleScreen({ tasks, onCaptureSubmit }: OracleScreenProps) {
         task={selectedTask}
         visible={selectedTask !== null}
         onClose={() => setSelectedTask(null)}
+        onMarkDone={(taskId) => {
+          onMarkTaskDone(taskId);
+          setSelectedTask(null);
+        }}
       />
     </>
   );

@@ -6,6 +6,7 @@ import type { Task } from '../types/task';
 
 type ArchiveScreenProps = {
   tasks: Task[];
+  onMarkTaskDone: (taskId: string) => void;
 };
 
 function groupTasksByCategory(tasks: Task[]) {
@@ -16,9 +17,12 @@ function groupTasksByCategory(tasks: Task[]) {
   }, {});
 }
 
-export function ArchiveScreen({ tasks }: ArchiveScreenProps) {
+export function ArchiveScreen({ tasks, onMarkTaskDone }: ArchiveScreenProps) {
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
-  const grouped = groupTasksByCategory(tasks);
+  const [showCompleted, setShowCompleted] = useState(false);
+
+  const visibleTasks = showCompleted ? tasks : tasks.filter((task) => task.status !== 'Done');
+  const grouped = groupTasksByCategory(visibleTasks);
   const categories = Object.keys(grouped).sort();
 
   return (
@@ -27,6 +31,17 @@ export function ArchiveScreen({ tasks }: ArchiveScreenProps) {
         <Text style={styles.eyebrow}>Vault</Text>
         <Text style={styles.title}>All captured tasks</Text>
         <Text style={styles.copy}>Tap a task to inspect its full schema details.</Text>
+
+        <View style={styles.filterRow}>
+          <Pressable
+            onPress={() => setShowCompleted((value) => !value)}
+            style={[styles.filterChip, showCompleted && styles.filterChipActive]}
+          >
+            <Text style={[styles.filterChipText, showCompleted && styles.filterChipTextActive]}>
+              {showCompleted ? 'Hide Completed' : 'Show Completed'}
+            </Text>
+          </Pressable>
+        </View>
 
         {categories.length === 0 ? (
           <View style={styles.emptyState}>
@@ -61,6 +76,10 @@ export function ArchiveScreen({ tasks }: ArchiveScreenProps) {
         task={selectedTask}
         visible={selectedTask !== null}
         onClose={() => setSelectedTask(null)}
+        onMarkDone={(taskId) => {
+          onMarkTaskDone(taskId);
+          setSelectedTask(null);
+        }}
       />
     </>
   );
@@ -91,6 +110,30 @@ const styles = StyleSheet.create({
     fontSize: 16,
     lineHeight: 22,
     marginBottom: 8,
+  },
+  filterRow: {
+    flexDirection: 'row',
+    marginBottom: 4,
+  },
+  filterChip: {
+    borderWidth: 1,
+    borderColor: '#9f8b65',
+    borderRadius: 999,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    backgroundColor: '#fff6df',
+  },
+  filterChipActive: {
+    borderColor: '#4f5c4d',
+    backgroundColor: '#e4efe1',
+  },
+  filterChipText: {
+    color: '#5a4f36',
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  filterChipTextActive: {
+    color: '#2f4a2d',
   },
   emptyState: {
     marginTop: 6,

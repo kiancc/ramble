@@ -6,6 +6,7 @@ type TaskDetailModalProps = {
   task: Task | null;
   visible: boolean;
   onClose: () => void;
+  onMarkDone?: (taskId: string) => void;
 };
 
 type FieldRowProps = {
@@ -51,7 +52,7 @@ function formatList(values: string[] | undefined) {
   return values.map((value) => `- ${value}`).join('\n');
 }
 
-export function TaskDetailModal({ task, visible, onClose }: TaskDetailModalProps) {
+export function TaskDetailModal({ task, visible, onClose, onMarkDone }: TaskDetailModalProps) {
   if (!task) {
     return null;
   }
@@ -62,9 +63,17 @@ export function TaskDetailModal({ task, visible, onClose }: TaskDetailModalProps
         <View style={styles.sheet}>
           <View style={styles.header}>
             <Text style={styles.heading}>Task schema detail</Text>
-            <Pressable onPress={onClose} style={styles.closeButton}>
-              <Text style={styles.closeButtonText}>Close</Text>
-            </Pressable>
+            <View style={styles.headerActions}>
+              {task.status !== 'Done' && onMarkDone ? (
+                <Pressable onPress={() => onMarkDone(task.id)} style={styles.doneButton}>
+                  <Text style={styles.doneButtonText}>Mark Done</Text>
+                </Pressable>
+              ) : null}
+
+              <Pressable onPress={onClose} style={styles.closeButton}>
+                <Text style={styles.closeButtonText}>Close</Text>
+              </Pressable>
+            </View>
           </View>
 
           <ScrollView contentContainerStyle={styles.content}>
@@ -167,6 +176,11 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     gap: 10,
   },
+  headerActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
   heading: {
     fontSize: 18,
     fontWeight: '800',
@@ -181,6 +195,19 @@ const styles = StyleSheet.create({
   },
   closeButtonText: {
     color: '#2d2617',
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  doneButton: {
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: '#2f5a2b',
+    backgroundColor: '#dff0d8',
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+  },
+  doneButtonText: {
+    color: '#23431f',
     fontSize: 13,
     fontWeight: '700',
   },

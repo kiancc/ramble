@@ -101,7 +101,7 @@ Expected system behavior:
     
 - **UI Framework:** React Native Paper or NativeWind (Tailwind) for rapid, clean styling.
 
-#### 6. Future Feature (Not in Current Scope): Brain Dump
+#### 6. Future Features (Not in Current Scope): Brain Dump
 
 - **Feature Name:** Brain Dump
 
@@ -110,5 +110,15 @@ Expected system behavior:
 - **Expected Behavior:** Gemini decomposes the ramble into multiple categorized tasks, each with ICNU, next action, and context payload.
 
 - **Goal:** Offload cognitive sorting to AI so the app acts as an external executive function for rapid organization.
+
+- **Status:** Deferred, documented for later implementation.
+
+- **Feature Name:** Brain Vault
+
+- **Description:** Obsidian-style knowledge tracker
+
+- **Expected Behavior:** TODO
+
+- **Goal:** TODO
 
 - **Status:** Deferred, documented for later implementation.

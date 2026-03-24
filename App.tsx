@@ -55,13 +55,30 @@ export default function App() {
     setTasks((prevTasks) => applyUrgencyEscalation([createdTask, ...prevTasks]));
   };
 
+  const handleMarkTaskDone = (taskId: string) => {
+    setTasks((prevTasks) =>
+      prevTasks.map((task) =>
+        task.id === taskId
+          ? {
+              ...task,
+              status: 'Done',
+            }
+          : task,
+      ),
+    );
+  };
+
   return (
     <View style={styles.app}>
       <View style={styles.content}>
         {isOracle ? (
-          <OracleScreen tasks={tasks} onCaptureSubmit={handleCaptureSubmit} />
+          <OracleScreen
+            tasks={tasks}
+            onCaptureSubmit={handleCaptureSubmit}
+            onMarkTaskDone={handleMarkTaskDone}
+          />
         ) : (
-          <ArchiveScreen tasks={tasks} />
+          <ArchiveScreen tasks={tasks} onMarkTaskDone={handleMarkTaskDone} />
         )}
       </View>
 
