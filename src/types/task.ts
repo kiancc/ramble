@@ -36,6 +36,7 @@ export type Task = {
   taskName: string;
   category: string;
   taskSize: TaskSize;
+  highLevelSteps: string[];
   icnuScores: IcnuScores;
   energyLevel: EnergyLevel;
   nextPhysicalAction: string;

@@ -91,6 +91,11 @@ export function TaskDetailModal({ task, visible, onClose, onMarkDone }: TaskDeta
             <FieldRow label="nextPhysicalAction" value={task.nextPhysicalAction} />
 
             <View style={styles.row}>
+              <Text style={styles.rowLabel}>highLevelSteps</Text>
+              <Text style={styles.debugBlock}>{formatList(task.highLevelSteps)}</Text>
+            </View>
+
+            <View style={styles.row}>
               <Text style={styles.rowLabel}>context</Text>
               {task.context ? (
                 <View style={styles.icnuCard}>

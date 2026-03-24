@@ -14,6 +14,7 @@ Return ONLY a valid JSON object with this exact schema and no markdown:
   "task_name": "string",
   "category": "string",
   "task_size": "Small|Medium|Large|XL",
+  "high_level_steps": ["string"],
   "icnu_scores": {
     "interest": "integer 1-5",
     "challenge": "integer 1-5",
@@ -41,6 +42,7 @@ type GeminiTaskSchema = {
   task_name: string;
   category: string;
   task_size: Task['taskSize'];
+  high_level_steps: string[];
   icnu_scores: {
     interest: number;
     challenge: number;
@@ -77,6 +79,16 @@ function normalizeTaskContext(context: GeminiTaskSchema['context']): TaskContext
   };
 }
 
+function normalizeHighLevelSteps(steps: string[]) {
+  const cleaned = normalizeStringArray(steps);
+
+  if (cleaned.length === 0) {
+    return ['Start with the next physical action.', 'Continue the core implementation.', 'Review and finalize the outcome.'];
+  }
+
+  return cleaned.slice(0, 5);
+}
+
 function clampScore(value: number) {
   return Math.max(1, Math.min(5, value));
 }
@@ -91,6 +103,7 @@ function normalizeGeminiTask(schema: GeminiTaskSchema, captureDebug: CaptureDebu
     taskName: schema.task_name.trim() || 'Captured task',
     category: schema.category.trim() || 'General',
     taskSize: schema.task_size,
+    highLevelSteps: normalizeHighLevelSteps(schema.high_level_steps),
     icnuScores: {
       interest: clampScore(schema.icnu_scores.interest),
       challenge: clampScore(schema.icnu_scores.challenge),
@@ -154,6 +167,7 @@ function toGeminiTaskSchema(raw: unknown): GeminiTaskSchema {
     typeof data.task_name !== 'string' ||
     typeof data.category !== 'string' ||
     !isValidTaskSize(data.task_size) ||
+    !isStringArray(data.high_level_steps) ||
     !isValidEnergyLevel(data.energy_level) ||
     typeof data.next_physical_action !== 'string' ||
     !isValidPlacement(data.oracle_placement) ||
@@ -178,6 +192,7 @@ function toGeminiTaskSchema(raw: unknown): GeminiTaskSchema {
     task_name: data.task_name,
     category: data.category,
     task_size: data.task_size,
+    high_level_steps: data.high_level_steps,
     icnu_scores: icnu,
     energy_level: data.energy_level,
     next_physical_action: data.next_physical_action,
@@ -380,6 +395,34 @@ function inferNextPhysicalAction(taskName: string) {
   return `Open your notes and write one bullet to start: ${taskName}.`;
 }
 
+function inferHighLevelSteps(ramble: string, nextPhysicalAction: string): string[] {
+  const sentences = extractSentences(ramble);
+  const actionLike = sentences
+    .filter((sentence) => {
+      const lower = sentence.toLowerCase();
+      return (
+        lower.includes('need to') ||
+        lower.includes('then') ||
+        lower.includes('after') ||
+        lower.includes('run') ||
+        lower.includes('send') ||
+        lower.includes('write') ||
+        lower.includes('review')
+      );
+    })
+    .slice(0, 5);
+
+  if (actionLike.length > 0) {
+    return normalizeHighLevelSteps(actionLike);
+  }
+
+  return normalizeHighLevelSteps([
+    nextPhysicalAction,
+    'Complete the main work for this task.',
+    'Review and submit or save the final result.',
+  ]);
+}
+
 function extractSentences(ramble: string) {
   return ramble
     .split(/[.!?]/)
@@ -443,7 +486,9 @@ function buildTaskFromRamble(ramble: string): Task {
   const urgency = scoreFromKeywords(lower, 'urgency');
   const energyLevel = inferEnergyLevel(interest, challenge);
   const taskName = inferTaskName(ramble);
+  const nextPhysicalAction = inferNextPhysicalAction(taskName);
   const context = inferContextFromRamble(ramble, taskName);
+  const highLevelSteps = inferHighLevelSteps(ramble, nextPhysicalAction);
 
   return {
     id: buildTaskId(),
@@ -457,7 +502,8 @@ function buildTaskFromRamble(ramble: string): Task {
       urgency,
     },
     energyLevel,
-    nextPhysicalAction: inferNextPhysicalAction(taskName),
+    highLevelSteps,
+    nextPhysicalAction,
     deadline: inferDeadline(lower),
     oraclePlacement: inferPlacement(urgency, energyLevel, interest, challenge),
     status: 'To Do',

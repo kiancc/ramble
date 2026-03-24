@@ -5,7 +5,7 @@
 
 1. **Capture:** User taps a microphone button, uses native device dictation to ramble about a task/thought, and taps "Send."
     
-2. **Processing:** Text is sent to the Gemini API, which extracts structured JSON (Task name, Category, ICNU scores, Energy Level, Task Size, Deadline, Next Physical Action) plus contextual memory fields (supporting notes, key details, artifacts, parameters, follow-up tasks, open questions).
+2. **Processing:** Text is sent to the Gemini API, which extracts structured JSON (Task name, Category, ICNU scores, Energy Level, Task Size, High-Level Steps, Deadline, Next Physical Action) plus contextual memory fields (supporting notes, key details, artifacts, parameters, follow-up tasks, open questions).
     
 3. **Triaging (The Oracle View):** The user views a ruthlessly filtered feed:
     
@@ -27,6 +27,8 @@
 - **Context Preservation:** Each capture stores relevant thought context alongside the main task, including constraints, existing progress, artifacts, and follow-up actions extracted from a single ramble.
     
 - **Next Physical Action Generator:** Every task must have a microscopic, zero-friction first step defined by the AI.
+
+- **High-Level Steps:** Every task should include a short 3-5 step high-level plan to reduce planning paralysis after initiation.
     
 - **Dynamic Urgency Escalation:** A background/on-load function that compares the current date to a task's deadline, using the AI-estimated "Task Size" to determine how early a task moves to the "On Fire" list (Small = 3 days, XL = 6 weeks).
     
@@ -44,6 +46,7 @@ JSON
   "task_name": "string",
   "category": "string",
   "task_size": "string (Small, Medium, Large, XL)",
+  "high_level_steps": ["string"],
   "icnu_scores": {
     "interest": "integer 1-5",
     "challenge": "integer 1-5",

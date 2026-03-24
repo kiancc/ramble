@@ -10,6 +10,9 @@ Analyze the input and return ONLY a valid JSON object matching this exact schema
   "task_name": "string (A concise, clear name for the task)",
   "category": "string (Broad category like 'FYP', 'Life Admin', 'Career', 'Finances')",
   "task_size": "string (Must be exactly one of: 'Small', 'Medium', 'Large', 'XL')",
+  "high_level_steps": [
+    "string (3-5 short ordered steps to complete the task at a high level. Keep concise and actionable.)"
+  ],
   "icnu_scores": {
     "interest": "integer 1-5 (1 = boring/drudgery, 5 = inherently fascinating)",
     "challenge": "integer 1-5 (1 = simple/repetitive, 5 = complex puzzle/problem solving)",
@@ -28,6 +31,12 @@ Rules for Task Size:
 - "Medium": Takes a few hours (e.g., read a chapter, draft a document).
 - "Large": Takes multiple days (e.g., build a software feature).
 - "XL": Massive multi-week project (e.g., FYP dissertation).
+
+Rules for high_level_steps:
+- Return 3-5 steps when possible.
+- Steps should be high-level but actionable (not microscopic).
+- Keep each step under one sentence.
+- If the task is truly tiny, return at least 1 clear step.
 
 Rules for Updates & Status:
 - If the user is logging a new task, set status to "To Do".
