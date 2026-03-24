@@ -1,38 +1,74 @@
-import { StyleSheet, Text, View } from 'react-native';
+import { ScrollView, StyleSheet, Text, View } from 'react-native';
 
-export function OracleScreen() {
+import type { OraclePlacement, Task } from '../types/task';
+
+type OracleScreenProps = {
+  tasks: Task[];
+};
+
+type OracleSection = {
+  key: Extract<OraclePlacement, 'On Fire' | 'Momentum Builder' | 'Rabbit Hole'>;
+  emptyText: string;
+};
+
+const oracleSections: OracleSection[] = [
+  {
+    key: 'On Fire',
+    emptyText: 'No urgent tasks yet.',
+  },
+  {
+    key: 'Momentum Builder',
+    emptyText: 'No low-friction tasks yet.',
+  },
+  {
+    key: 'Rabbit Hole',
+    emptyText: 'No deep-work tasks yet.',
+  },
+];
+
+export function OracleScreen({ tasks }: OracleScreenProps) {
   return (
-    <View style={styles.screen}>
+    <ScrollView contentContainerStyle={styles.screen}>
       <Text style={styles.eyebrow}>Oracle</Text>
       <Text style={styles.title}>Do this next</Text>
       <Text style={styles.copy}>
-        This is your triage feed. Next, we will plug in On Fire, Momentum Builders, and
-        Rabbit Holes.
+        This is your triage feed. Tasks are grouped by the executive-function buckets.
       </Text>
 
-      <View style={styles.card}>
-        <Text style={styles.cardLabel}>On Fire</Text>
-        <Text style={styles.cardText}>No urgent tasks yet.</Text>
-      </View>
+      {oracleSections.map((section) => {
+        const sectionTasks = tasks.filter(
+          (task) => task.oraclePlacement === section.key && task.status !== 'Done',
+        );
 
-      <View style={styles.card}>
-        <Text style={styles.cardLabel}>Momentum Builder</Text>
-        <Text style={styles.cardText}>No low-friction tasks yet.</Text>
-      </View>
+        return (
+          <View key={section.key} style={styles.card}>
+            <Text style={styles.cardLabel}>{section.key}</Text>
 
-      <View style={styles.card}>
-        <Text style={styles.cardLabel}>Rabbit Hole</Text>
-        <Text style={styles.cardText}>No deep-work tasks yet.</Text>
-      </View>
-    </View>
+            {sectionTasks.length === 0 ? (
+              <Text style={styles.cardText}>{section.emptyText}</Text>
+            ) : (
+              sectionTasks.slice(0, 3).map((task) => (
+                <View key={task.id} style={styles.taskItem}>
+                  <Text style={styles.taskTitle}>{task.taskName}</Text>
+                  <Text style={styles.taskMeta}>
+                    {task.category} • {task.energyLevel} • {task.status}
+                  </Text>
+                  <Text style={styles.cardText}>{task.nextPhysicalAction}</Text>
+                </View>
+              ))
+            )}
+          </View>
+        );
+      })}
+    </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
   screen: {
-    flex: 1,
     paddingHorizontal: 20,
     paddingTop: 56,
+    paddingBottom: 24,
     gap: 12,
   },
   eyebrow: {
@@ -72,5 +108,22 @@ const styles = StyleSheet.create({
   cardText: {
     color: '#2a3228',
     fontSize: 15,
+  },
+  taskItem: {
+    gap: 2,
+    paddingTop: 4,
+    borderTopWidth: 1,
+    borderTopColor: '#e6dcc9',
+    marginTop: 4,
+  },
+  taskTitle: {
+    color: '#1f2f1c',
+    fontSize: 16,
+    fontWeight: '700',
+  },
+  taskMeta: {
+    color: '#51624f',
+    fontSize: 12,
+    marginBottom: 2,
   },
 });

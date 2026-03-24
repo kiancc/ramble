@@ -2,8 +2,9 @@ import { useState } from 'react';
 import { StatusBar } from 'expo-status-bar';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
+import { mockTasks } from './src/data/mockTasks';
+import { ArchiveScreen } from './src/screens/ArchiveScreen';
 import { OracleScreen } from './src/screens/OracleScreen';
-import { VaultScreen } from './src/screens/VaultScreen';
 
 type TabKey = 'oracle' | 'vault';
 
@@ -14,7 +15,9 @@ export default function App() {
 
   return (
     <View style={styles.app}>
-      <View style={styles.content}>{isOracle ? <OracleScreen /> : <VaultScreen />}</View>
+      <View style={styles.content}>
+        {isOracle ? <OracleScreen tasks={mockTasks} /> : <ArchiveScreen tasks={mockTasks} />}
+      </View>
 
       <View style={styles.tabBar}>
         <Pressable
