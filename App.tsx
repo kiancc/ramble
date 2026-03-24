@@ -1,9 +1,10 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { StatusBar } from 'expo-status-bar';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
-import { mockTasks } from './src/data/mockTasks';
 import { sendCaptureRamble } from './src/lib/captureFlow';
+import { loadStoredTasks, saveStoredTasks } from './src/lib/taskStorage';
+import { applyUrgencyEscalation } from './src/lib/urgency';
 import { ArchiveScreen } from './src/screens/ArchiveScreen';
 import { OracleScreen } from './src/screens/OracleScreen';
 import type { Task } from './src/types/task';
@@ -11,15 +12,47 @@ import type { Task } from './src/types/task';
 type TabKey = 'oracle' | 'vault';
 
 export default function App() {
-  const [tasks, setTasks] = useState<Task[]>(mockTasks);
+  const [tasks, setTasks] = useState<Task[]>([]);
   const [activeTab, setActiveTab] = useState<TabKey>('oracle');
+  const [isHydrated, setIsHydrated] = useState(false);
 
   const isOracle = activeTab === 'oracle';
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function hydrateFromStorage() {
+      const storedTasks = await loadStoredTasks();
+      const sourceTasks = storedTasks ?? [];
+      const escalatedTasks = applyUrgencyEscalation(sourceTasks);
+
+      if (!cancelled) {
+        setTasks(escalatedTasks);
+        setIsHydrated(true);
+      }
+    }
+
+    hydrateFromStorage();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!isHydrated) {
+      return;
+    }
+
+    saveStoredTasks(tasks).catch(() => {
+      // Keep app responsive even if local persistence fails.
+    });
+  }, [tasks, isHydrated]);
 
   const handleCaptureSubmit = async (ramble: string) => {
     const createdTask = await sendCaptureRamble(ramble);
 
-    setTasks((prevTasks) => [createdTask, ...prevTasks]);
+    setTasks((prevTasks) => applyUrgencyEscalation([createdTask, ...prevTasks]));
   };
 
   return (
