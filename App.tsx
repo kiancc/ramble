@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { StatusBar } from 'expo-status-bar';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
-import { sendCaptureRamble } from './src/lib/captureFlow';
+import { sendBrainDumpRamble, sendCaptureRamble } from './src/lib/captureFlow';
 import { loadStoredTasks, saveStoredTasks } from './src/lib/taskStorage';
 import { applyUrgencyEscalation } from './src/lib/urgency';
 import { ArchiveScreen } from './src/screens/ArchiveScreen';
@@ -55,6 +55,14 @@ export default function App() {
     setTasks((prevTasks) => applyUrgencyEscalation([createdTask, ...prevTasks]));
   };
 
+  const handleBrainDumpSubmit = async (ramble: string) => {
+    const createdTasks = await sendBrainDumpRamble(ramble);
+
+    setTasks((prevTasks) => applyUrgencyEscalation([...createdTasks, ...prevTasks]));
+
+    return createdTasks.length;
+  };
+
   const handleMarkTaskDone = (taskId: string) => {
     setTasks((prevTasks) =>
       prevTasks.map((task) =>
@@ -75,6 +83,7 @@ export default function App() {
           <OracleScreen
             tasks={tasks}
             onCaptureSubmit={handleCaptureSubmit}
+            onBrainDumpSubmit={handleBrainDumpSubmit}
             onMarkTaskDone={handleMarkTaskDone}
           />
         ) : (

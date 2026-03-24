@@ -36,6 +36,40 @@ Return ONLY a valid JSON object with this exact schema and no markdown:
   }
 }`;
 
+const BRAIN_DUMP_SYSTEM_PROMPT = `You are an expert Executive Function Assistant for ADHD support.
+
+The user will provide a long brain dump containing multiple tasks/thoughts.
+Extract multiple tasks and return ONLY valid JSON with this schema:
+{
+  "tasks": [
+    {
+      "task_name": "string",
+      "category": "string",
+      "task_size": "Small|Medium|Large|XL",
+      "high_level_steps": ["string"],
+      "icnu_scores": {
+        "interest": "integer 1-5",
+        "challenge": "integer 1-5",
+        "novelty": "integer 1-5",
+        "urgency": "integer 1-5"
+      },
+      "energy_level": "Brain Dead|Normal|Hyperfocus",
+      "next_physical_action": "string",
+      "deadline": "ISO 8601 string or null",
+      "oracle_placement": "On Fire|Momentum Builder|Rabbit Hole|The Vault",
+      "status": "To Do|Paused|Done",
+      "context": {
+        "supporting_notes": "string",
+        "key_details": ["string"],
+        "artifacts": ["string"],
+        "parameters": ["string"],
+        "follow_up_tasks": ["string"],
+        "open_questions": ["string"]
+      }
+    }
+  ]
+}`;
+
 type ScoreKey = 'interest' | 'challenge' | 'novelty' | 'urgency';
 
 type GeminiTaskSchema = {
@@ -62,6 +96,10 @@ type GeminiTaskSchema = {
     follow_up_tasks: string[];
     open_questions: string[];
   };
+};
+
+type GeminiBrainDumpSchema = {
+  tasks: GeminiTaskSchema[];
 };
 
 function normalizeStringArray(values: string[]) {
@@ -118,6 +156,23 @@ function normalizeGeminiTask(schema: GeminiTaskSchema, captureDebug: CaptureDebu
     createdAt: new Date().toISOString(),
     context: normalizeTaskContext(schema.context),
     captureDebug,
+  };
+}
+
+function buildCaptureDebug(
+  inputTranscript: string,
+  source: CaptureDebug['source'],
+  model: string,
+  geminiRawText: string | null,
+  geminiRawResponse: string | null,
+): CaptureDebug {
+  return {
+    inputTranscript,
+    source,
+    model,
+    capturedAt: new Date().toISOString(),
+    geminiRawText,
+    geminiRawResponse,
   };
 }
 
@@ -203,6 +258,18 @@ function toGeminiTaskSchema(raw: unknown): GeminiTaskSchema {
   };
 }
 
+function toGeminiBrainDumpSchema(raw: unknown): GeminiBrainDumpSchema {
+  const data = raw as Partial<GeminiBrainDumpSchema>;
+
+  if (!Array.isArray(data.tasks) || data.tasks.length === 0) {
+    throw new Error('Gemini returned an invalid brain dump schema.');
+  }
+
+  return {
+    tasks: data.tasks.map((task) => toGeminiTaskSchema(task)),
+  };
+}
+
 async function createTaskViaGemini(ramble: string): Promise<Task> {
   const apiKey = process.env.EXPO_PUBLIC_GEMINI_API_KEY;
 
@@ -248,16 +315,73 @@ async function createTaskViaGemini(ramble: string): Promise<Task> {
   const rawTask = parseJsonPayload(text);
   const normalized = toGeminiTaskSchema(rawTask);
 
-  const captureDebug: CaptureDebug = {
-    inputTranscript: ramble,
-    source: 'gemini',
-    model: GEMINI_MODEL_NAME,
-    capturedAt: new Date().toISOString(),
-    geminiRawText: text,
-    geminiRawResponse: JSON.stringify(result),
-  };
+  const captureDebug = buildCaptureDebug(
+    ramble,
+    'gemini',
+    GEMINI_MODEL_NAME,
+    text,
+    JSON.stringify(result),
+  );
 
   return normalizeGeminiTask(normalized, captureDebug);
+}
+
+async function createBrainDumpTasksViaGemini(ramble: string): Promise<Task[]> {
+  const apiKey = process.env.EXPO_PUBLIC_GEMINI_API_KEY;
+
+  if (!apiKey) {
+    throw new Error('Missing EXPO_PUBLIC_GEMINI_API_KEY');
+  }
+
+  const nowIso = new Date().toISOString();
+  const userPrompt = `Current date-time: ${nowIso}\n\nBrain dump text: ${ramble}`;
+  const response = await fetch(`${GEMINI_API_URL}?key=${apiKey}`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      generationConfig: {
+        temperature: 0.2,
+        responseMimeType: 'application/json',
+      },
+      systemInstruction: {
+        parts: [{ text: BRAIN_DUMP_SYSTEM_PROMPT }],
+      },
+      contents: [
+        {
+          role: 'user',
+          parts: [{ text: userPrompt }],
+        },
+      ],
+    }),
+  });
+
+  if (!response.ok) {
+    throw new Error(`Gemini brain dump request failed: ${response.status}`);
+  }
+
+  const result = await response.json();
+  const text: string | undefined = result?.candidates?.[0]?.content?.parts?.[0]?.text;
+
+  if (!text) {
+    throw new Error('Gemini brain dump response had no text payload.');
+  }
+
+  const raw = parseJsonPayload(text);
+  const normalized = toGeminiBrainDumpSchema(raw);
+
+  return normalized.tasks.slice(0, 10).map((taskSchema) => {
+    const captureDebug = buildCaptureDebug(
+      ramble,
+      'gemini',
+      `${GEMINI_MODEL_NAME}-brain-dump`,
+      text,
+      JSON.stringify(result),
+    );
+
+    return normalizeGeminiTask(taskSchema, captureDebug);
+  });
 }
 
 function hasKeyword(text: string, keywords: string[]) {
@@ -391,6 +515,24 @@ function inferTaskName(ramble: string) {
   return firstSentence.slice(0, 80);
 }
 
+function splitBrainDumpIntoEntries(ramble: string) {
+  const firstPass = ramble
+    .split(/\n|[.!?]+/)
+    .map((part) => part.trim())
+    .filter((part) => part.length > 0);
+
+  const secondPass = firstPass
+    .flatMap((part) =>
+      part
+        .split(/\s+and also\s+|\s+also\s+|\s+plus\s+/i)
+        .map((entry) => entry.trim())
+        .filter((entry) => entry.length > 0),
+    )
+    .filter((entry) => entry.length >= 8);
+
+  return (secondPass.length > 0 ? secondPass : [ramble]).slice(0, 10);
+}
+
 function inferNextPhysicalAction(taskName: string) {
   return `Open your notes and write one bullet to start: ${taskName}.`;
 }
@@ -520,11 +662,45 @@ function buildTaskFromRamble(ramble: string): Task {
   };
 }
 
+function buildTasksFromBrainDumpFallback(ramble: string): Task[] {
+  const entries = splitBrainDumpIntoEntries(ramble);
+
+  return entries.map((entry) => {
+    const baseTask = buildTaskFromRamble(entry);
+
+    return {
+      ...baseTask,
+      captureDebug: buildCaptureDebug(
+        ramble,
+        'fallback',
+        'local-brain-dump-v1',
+        null,
+        null,
+      ),
+    };
+  });
+}
+
 export async function sendCaptureRamble(ramble: string): Promise<Task> {
   try {
     return await createTaskViaGemini(ramble);
   } catch {
     await new Promise((resolve) => setTimeout(resolve, 250));
     return buildTaskFromRamble(ramble);
+  }
+}
+
+export async function sendBrainDumpRamble(ramble: string): Promise<Task[]> {
+  try {
+    const tasks = await createBrainDumpTasksViaGemini(ramble);
+
+    if (tasks.length > 0) {
+      return tasks;
+    }
+
+    throw new Error('Gemini brain dump returned no tasks.');
+  } catch {
+    await new Promise((resolve) => setTimeout(resolve, 250));
+    return buildTasksFromBrainDumpFallback(ramble);
   }
 }

@@ -4,6 +4,8 @@
 #### 1. Core User Flow
 
 1. **Capture:** User taps a microphone button, uses native device dictation to ramble about a task/thought, and taps "Send."
+
+  - **Brain Dump Mode:** User can paste/speak a large multi-task ramble and choose "Brain Dump" to have Gemini split and organize it into multiple tasks.
     
 2. **Processing:** Text is sent to the Gemini API, which extracts structured JSON (Task name, Category, ICNU scores, Energy Level, Task Size, High-Level Steps, Deadline, Next Physical Action) plus contextual memory fields (supporting notes, key details, artifacts, parameters, follow-up tasks, open questions).
     
@@ -23,6 +25,8 @@
 #### 2. Key Features & Logic
 
 - **Voice-to-JSON Pipeline:** Utilizing device dictation to capture input and Gemini as the NLP engine to parse the text into a strict schema.
+
+- **Brain Dump Parsing:** A dedicated Brain Dump submit path asks Gemini to extract multiple tasks from a single ramble and returns a task array.
 
 - **Context Preservation:** Each capture stores relevant thought context alongside the main task, including constraints, existing progress, artifacts, and follow-up actions extracted from a single ramble.
     
@@ -104,17 +108,7 @@ Expected system behavior:
     
 - **UI Framework:** React Native Paper or NativeWind (Tailwind) for rapid, clean styling.
 
-#### 6. Future Features (Not in Current Scope): Brain Dump
-
-- **Feature Name:** Brain Dump
-
-- **Description:** A dedicated mode where user can ramble all pending thoughts/tasks in one long capture.
-
-- **Expected Behavior:** Gemini decomposes the ramble into multiple categorized tasks, each with ICNU, next action, and context payload.
-
-- **Goal:** Offload cognitive sorting to AI so the app acts as an external executive function for rapid organization.
-
-- **Status:** Deferred, documented for later implementation.
+#### 6. Future Features (Not in Current Scope)
 
 - **Feature Name:** Brain Vault
 

@@ -48,3 +48,39 @@ Rules for oracle_placement:
 - "Rabbit Hole": If Interest and/or Challenge are 4 or 5.
 - "Momentum Builder": If Energy Level is 'Brain Dead' and the task size is Small.
 - "The Vault": If it's a general idea, low urgency, or a large project with no immediate next step.
+
+---
+
+Brain Dump mode prompt/output reference:
+
+When the user submits a large brain dump intended to be split into multiple tasks, return raw JSON in this structure:
+
+{
+  "tasks": [
+    {
+      "task_name": "string",
+      "category": "string",
+      "task_size": "Small|Medium|Large|XL",
+      "high_level_steps": ["string"],
+      "icnu_scores": {
+        "interest": 1,
+        "challenge": 1,
+        "novelty": 1,
+        "urgency": 1
+      },
+      "energy_level": "Brain Dead|Normal|Hyperfocus",
+      "next_physical_action": "string",
+      "deadline": "ISO 8601 string or null",
+      "oracle_placement": "On Fire|Momentum Builder|Rabbit Hole|The Vault",
+      "status": "To Do|Paused|Done",
+      "context": {
+        "supporting_notes": "string",
+        "key_details": ["string"],
+        "artifacts": ["string"],
+        "parameters": ["string"],
+        "follow_up_tasks": ["string"],
+        "open_questions": ["string"]
+      }
+    }
+  ]
+}

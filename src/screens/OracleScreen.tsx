@@ -7,6 +7,7 @@ import type { OraclePlacement, Task } from '../types/task';
 type OracleScreenProps = {
   tasks: Task[];
   onCaptureSubmit: (ramble: string) => Promise<void>;
+  onBrainDumpSubmit: (ramble: string) => Promise<number>;
   onMarkTaskDone: (taskId: string) => void;
 };
 
@@ -30,7 +31,12 @@ const oracleSections: OracleSection[] = [
   },
 ];
 
-export function OracleScreen({ tasks, onCaptureSubmit, onMarkTaskDone }: OracleScreenProps) {
+export function OracleScreen({
+  tasks,
+  onCaptureSubmit,
+  onBrainDumpSubmit,
+  onMarkTaskDone,
+}: OracleScreenProps) {
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const [captureText, setCaptureText] = useState('');
   const [isSending, setIsSending] = useState(false);
@@ -57,6 +63,27 @@ export function OracleScreen({ tasks, onCaptureSubmit, onMarkTaskDone }: OracleS
     }
   };
 
+  const handleBrainDumpPress = async () => {
+    const trimmed = captureText.trim();
+
+    if (trimmed.length === 0 || isSending) {
+      return;
+    }
+
+    setCaptureFeedback(null);
+    setIsSending(true);
+
+    try {
+      const createdCount = await onBrainDumpSubmit(trimmed);
+      setCaptureText('');
+      setCaptureFeedback(`Brain dump organized into ${createdCount} tasks.`);
+    } catch {
+      setCaptureFeedback('Brain dump failed. Please try again.');
+    } finally {
+      setIsSending(false);
+    }
+  };
+
   return (
     <>
       <ScrollView contentContainerStyle={styles.screen}>
@@ -69,7 +96,7 @@ export function OracleScreen({ tasks, onCaptureSubmit, onMarkTaskDone }: OracleS
         <View style={styles.captureCard}>
           <Text style={styles.captureLabel}>Quick capture</Text>
           <Text style={styles.captureHint}>
-            Use your keyboard mic to dictate, then tap send.
+            Use your keyboard mic to dictate. Send one task or use Brain Dump for many.
           </Text>
 
           <TextInput
@@ -83,16 +110,29 @@ export function OracleScreen({ tasks, onCaptureSubmit, onMarkTaskDone }: OracleS
             textAlignVertical="top"
           />
 
-          <Pressable
-            onPress={handleCapturePress}
-            disabled={isSending || captureText.trim().length === 0}
-            style={[
-              styles.captureButton,
-              (isSending || captureText.trim().length === 0) && styles.captureButtonDisabled,
-            ]}
-          >
-            <Text style={styles.captureButtonText}>{isSending ? 'Sending...' : 'Send to Oracle'}</Text>
-          </Pressable>
+          <View style={styles.captureActions}>
+            <Pressable
+              onPress={handleCapturePress}
+              disabled={isSending || captureText.trim().length === 0}
+              style={[
+                styles.captureButton,
+                (isSending || captureText.trim().length === 0) && styles.captureButtonDisabled,
+              ]}
+            >
+              <Text style={styles.captureButtonText}>{isSending ? 'Sending...' : 'Send to Oracle'}</Text>
+            </Pressable>
+
+            <Pressable
+              onPress={handleBrainDumpPress}
+              disabled={isSending || captureText.trim().length === 0}
+              style={[
+                styles.captureButtonAlt,
+                (isSending || captureText.trim().length === 0) && styles.captureButtonDisabled,
+              ]}
+            >
+              <Text style={styles.captureButtonText}>{isSending ? 'Sending...' : 'Brain Dump'}</Text>
+            </Pressable>
+          </View>
 
           {captureFeedback ? <Text style={styles.captureFeedback}>{captureFeedback}</Text> : null}
         </View>
@@ -218,13 +258,25 @@ const styles = StyleSheet.create({
     lineHeight: 20,
   },
   captureButton: {
+    flex: 1,
     borderRadius: 999,
     backgroundColor: '#22321f',
     paddingVertical: 11,
     alignItems: 'center',
   },
+  captureButtonAlt: {
+    flex: 1,
+    borderRadius: 999,
+    backgroundColor: '#446640',
+    paddingVertical: 11,
+    alignItems: 'center',
+  },
   captureButtonDisabled: {
     backgroundColor: '#7f8e7a',
+  },
+  captureActions: {
+    flexDirection: 'row',
+    gap: 8,
   },
   captureButtonText: {
     color: '#f2efde',
