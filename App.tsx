@@ -3,20 +3,33 @@ import { StatusBar } from 'expo-status-bar';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { mockTasks } from './src/data/mockTasks';
+import { sendCaptureRamble } from './src/lib/captureFlow';
 import { ArchiveScreen } from './src/screens/ArchiveScreen';
 import { OracleScreen } from './src/screens/OracleScreen';
+import type { Task } from './src/types/task';
 
 type TabKey = 'oracle' | 'vault';
 
 export default function App() {
+  const [tasks, setTasks] = useState<Task[]>(mockTasks);
   const [activeTab, setActiveTab] = useState<TabKey>('oracle');
 
   const isOracle = activeTab === 'oracle';
 
+  const handleCaptureSubmit = async (ramble: string) => {
+    const createdTask = await sendCaptureRamble(ramble);
+
+    setTasks((prevTasks) => [createdTask, ...prevTasks]);
+  };
+
   return (
     <View style={styles.app}>
       <View style={styles.content}>
-        {isOracle ? <OracleScreen tasks={mockTasks} /> : <ArchiveScreen tasks={mockTasks} />}
+        {isOracle ? (
+          <OracleScreen tasks={tasks} onCaptureSubmit={handleCaptureSubmit} />
+        ) : (
+          <ArchiveScreen tasks={tasks} />
+        )}
       </View>
 
       <View style={styles.tabBar}>

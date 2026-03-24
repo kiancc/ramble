@@ -1,11 +1,12 @@
 import { useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 
 import { TaskDetailModal } from '../components/TaskDetailModal';
 import type { OraclePlacement, Task } from '../types/task';
 
 type OracleScreenProps = {
   tasks: Task[];
+  onCaptureSubmit: (ramble: string) => Promise<void>;
 };
 
 type OracleSection = {
@@ -28,8 +29,32 @@ const oracleSections: OracleSection[] = [
   },
 ];
 
-export function OracleScreen({ tasks }: OracleScreenProps) {
+export function OracleScreen({ tasks, onCaptureSubmit }: OracleScreenProps) {
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
+  const [captureText, setCaptureText] = useState('');
+  const [isSending, setIsSending] = useState(false);
+  const [captureFeedback, setCaptureFeedback] = useState<string | null>(null);
+
+  const handleCapturePress = async () => {
+    const trimmed = captureText.trim();
+
+    if (trimmed.length === 0 || isSending) {
+      return;
+    }
+
+    setCaptureFeedback(null);
+    setIsSending(true);
+
+    try {
+      await onCaptureSubmit(trimmed);
+      setCaptureText('');
+      setCaptureFeedback('Captured and filed into your task system.');
+    } catch {
+      setCaptureFeedback('Capture failed. Please try sending again.');
+    } finally {
+      setIsSending(false);
+    }
+  };
 
   return (
     <>
@@ -39,6 +64,37 @@ export function OracleScreen({ tasks }: OracleScreenProps) {
         <Text style={styles.copy}>
           Tap any task for its full schema. Tasks are grouped by executive-function buckets.
         </Text>
+
+        <View style={styles.captureCard}>
+          <Text style={styles.captureLabel}>Quick capture</Text>
+          <Text style={styles.captureHint}>
+            Use your keyboard mic to dictate, then tap send.
+          </Text>
+
+          <TextInput
+            multiline
+            numberOfLines={4}
+            value={captureText}
+            onChangeText={setCaptureText}
+            placeholder="Ramble your task here..."
+            placeholderTextColor="#6b7568"
+            style={styles.captureInput}
+            textAlignVertical="top"
+          />
+
+          <Pressable
+            onPress={handleCapturePress}
+            disabled={isSending || captureText.trim().length === 0}
+            style={[
+              styles.captureButton,
+              (isSending || captureText.trim().length === 0) && styles.captureButtonDisabled,
+            ]}
+          >
+            <Text style={styles.captureButtonText}>{isSending ? 'Sending...' : 'Send to Oracle'}</Text>
+          </Pressable>
+
+          {captureFeedback ? <Text style={styles.captureFeedback}>{captureFeedback}</Text> : null}
+        </View>
 
         {oracleSections.map((section) => {
           const sectionTasks = tasks.filter(
@@ -124,6 +180,55 @@ const styles = StyleSheet.create({
   cardText: {
     color: '#2a3228',
     fontSize: 15,
+  },
+  captureCard: {
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: '#9eb08f',
+    backgroundColor: '#eaf2e5',
+    padding: 14,
+    gap: 8,
+  },
+  captureLabel: {
+    fontSize: 13,
+    textTransform: 'uppercase',
+    letterSpacing: 0.8,
+    color: '#2d4a2b',
+    fontWeight: '800',
+  },
+  captureHint: {
+    color: '#355233',
+    fontSize: 14,
+  },
+  captureInput: {
+    minHeight: 94,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#9eb08f',
+    backgroundColor: '#f7fbf4',
+    paddingHorizontal: 10,
+    paddingVertical: 10,
+    color: '#20331d',
+    fontSize: 15,
+    lineHeight: 20,
+  },
+  captureButton: {
+    borderRadius: 999,
+    backgroundColor: '#22321f',
+    paddingVertical: 11,
+    alignItems: 'center',
+  },
+  captureButtonDisabled: {
+    backgroundColor: '#7f8e7a',
+  },
+  captureButtonText: {
+    color: '#f2efde',
+    fontWeight: '700',
+    fontSize: 15,
+  },
+  captureFeedback: {
+    color: '#244022',
+    fontSize: 13,
   },
   taskItem: {
     gap: 2,
