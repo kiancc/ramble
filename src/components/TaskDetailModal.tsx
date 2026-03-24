@@ -43,6 +43,14 @@ function formatJson(value: string | null) {
   }
 }
 
+function formatList(values: string[] | undefined) {
+  if (!values || values.length === 0) {
+    return '[]';
+  }
+
+  return values.map((value) => `- ${value}`).join('\n');
+}
+
 export function TaskDetailModal({ task, visible, onClose }: TaskDetailModalProps) {
   if (!task) {
     return null;
@@ -72,6 +80,28 @@ export function TaskDetailModal({ task, visible, onClose }: TaskDetailModalProps
             <FieldRow label="deadline" value={formatDate(task.deadline)} />
             <FieldRow label="createdAt" value={formatDate(task.createdAt)} />
             <FieldRow label="nextPhysicalAction" value={task.nextPhysicalAction} />
+
+            <View style={styles.row}>
+              <Text style={styles.rowLabel}>context</Text>
+              {task.context ? (
+                <View style={styles.icnuCard}>
+                  <Text style={styles.icnuText}>supportingNotes:</Text>
+                  <Text style={styles.debugBlock}>{task.context.supportingNotes}</Text>
+                  <Text style={styles.icnuText}>keyDetails:</Text>
+                  <Text style={styles.debugBlock}>{formatList(task.context.keyDetails)}</Text>
+                  <Text style={styles.icnuText}>artifacts:</Text>
+                  <Text style={styles.debugBlock}>{formatList(task.context.artifacts)}</Text>
+                  <Text style={styles.icnuText}>parameters:</Text>
+                  <Text style={styles.debugBlock}>{formatList(task.context.parameters)}</Text>
+                  <Text style={styles.icnuText}>followUpTasks:</Text>
+                  <Text style={styles.debugBlock}>{formatList(task.context.followUpTasks)}</Text>
+                  <Text style={styles.icnuText}>openQuestions:</Text>
+                  <Text style={styles.debugBlock}>{formatList(task.context.openQuestions)}</Text>
+                </View>
+              ) : (
+                <Text style={styles.rowValue}>null</Text>
+              )}
+            </View>
 
             <View style={styles.row}>
               <Text style={styles.rowLabel}>captureDebug</Text>

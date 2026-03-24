@@ -1,4 +1,4 @@
-import type { CaptureDebug, OraclePlacement, Task } from '../types/task';
+import type { CaptureDebug, OraclePlacement, Task, TaskContext } from '../types/task';
 
 const INTEREST_KEYWORDS = ['stripe', 'feature', 'project', 'fyp', 'build', 'interview'];
 const CHALLENGE_KEYWORDS = ['implement', 'debug', 'design', 'pipeline', 'refactor'];
@@ -24,7 +24,15 @@ Return ONLY a valid JSON object with this exact schema and no markdown:
   "next_physical_action": "string",
   "deadline": "ISO 8601 string or null",
   "oracle_placement": "On Fire|Momentum Builder|Rabbit Hole|The Vault",
-  "status": "To Do|Paused|Done"
+  "status": "To Do|Paused|Done",
+  "context": {
+    "supporting_notes": "string",
+    "key_details": ["string"],
+    "artifacts": ["string"],
+    "parameters": ["string"],
+    "follow_up_tasks": ["string"],
+    "open_questions": ["string"]
+  }
 }`;
 
 type ScoreKey = 'interest' | 'challenge' | 'novelty' | 'urgency';
@@ -44,7 +52,30 @@ type GeminiTaskSchema = {
   deadline: string | null;
   oracle_placement: OraclePlacement;
   status: Task['status'];
+  context: {
+    supporting_notes: string;
+    key_details: string[];
+    artifacts: string[];
+    parameters: string[];
+    follow_up_tasks: string[];
+    open_questions: string[];
+  };
 };
+
+function normalizeStringArray(values: string[]) {
+  return values.map((value) => value.trim()).filter((value) => value.length > 0);
+}
+
+function normalizeTaskContext(context: GeminiTaskSchema['context']): TaskContext {
+  return {
+    supportingNotes: context.supporting_notes.trim(),
+    keyDetails: normalizeStringArray(context.key_details),
+    artifacts: normalizeStringArray(context.artifacts),
+    parameters: normalizeStringArray(context.parameters),
+    followUpTasks: normalizeStringArray(context.follow_up_tasks),
+    openQuestions: normalizeStringArray(context.open_questions),
+  };
+}
 
 function clampScore(value: number) {
   return Math.max(1, Math.min(5, value));
@@ -72,6 +103,7 @@ function normalizeGeminiTask(schema: GeminiTaskSchema, captureDebug: CaptureDebu
     oraclePlacement: schema.oracle_placement,
     status: schema.status,
     createdAt: new Date().toISOString(),
+    context: normalizeTaskContext(schema.context),
     captureDebug,
   };
 }
@@ -109,9 +141,14 @@ function isValidStatus(value: unknown): value is Task['status'] {
   return value === 'To Do' || value === 'Paused' || value === 'Done';
 }
 
+function isStringArray(value: unknown): value is string[] {
+  return Array.isArray(value) && value.every((item) => typeof item === 'string');
+}
+
 function toGeminiTaskSchema(raw: unknown): GeminiTaskSchema {
   const data = raw as Partial<GeminiTaskSchema>;
   const icnu = data.icnu_scores as GeminiTaskSchema['icnu_scores'] | undefined;
+  const context = data.context as GeminiTaskSchema['context'] | undefined;
 
   if (
     typeof data.task_name !== 'string' ||
@@ -122,10 +159,17 @@ function toGeminiTaskSchema(raw: unknown): GeminiTaskSchema {
     !isValidPlacement(data.oracle_placement) ||
     !isValidStatus(data.status) ||
     !icnu ||
+    !context ||
     typeof icnu.interest !== 'number' ||
     typeof icnu.challenge !== 'number' ||
     typeof icnu.novelty !== 'number' ||
-    typeof icnu.urgency !== 'number'
+    typeof icnu.urgency !== 'number' ||
+    typeof context.supporting_notes !== 'string' ||
+    !isStringArray(context.key_details) ||
+    !isStringArray(context.artifacts) ||
+    !isStringArray(context.parameters) ||
+    !isStringArray(context.follow_up_tasks) ||
+    !isStringArray(context.open_questions)
   ) {
     throw new Error('Gemini returned an invalid task schema.');
   }
@@ -140,6 +184,7 @@ function toGeminiTaskSchema(raw: unknown): GeminiTaskSchema {
     deadline: typeof data.deadline === 'string' || data.deadline === null ? data.deadline : null,
     oracle_placement: data.oracle_placement,
     status: data.status,
+    context,
   };
 }
 
@@ -335,6 +380,61 @@ function inferNextPhysicalAction(taskName: string) {
   return `Open your notes and write one bullet to start: ${taskName}.`;
 }
 
+function extractSentences(ramble: string) {
+  return ramble
+    .split(/[.!?]/)
+    .map((sentence) => sentence.trim())
+    .filter((sentence) => sentence.length > 0);
+}
+
+function inferContextFromRamble(ramble: string, taskName: string): TaskContext {
+  const lower = ramble.toLowerCase();
+  const sentences = extractSentences(ramble);
+  const keyDetails = sentences
+    .filter((sentence) => {
+      const lowerSentence = sentence.toLowerCase();
+      return (
+        lowerSentence.includes('already') ||
+        lowerSentence.includes('just need') ||
+        lowerSentence.includes('need to') ||
+        lowerSentence.includes('also')
+      );
+    })
+    .slice(0, 6);
+
+  const artifactCandidates = ['result files', 'feature extraction', 'pipeline', 'report', 'form', 'email'];
+  const artifacts = artifactCandidates.filter((candidate) => lower.includes(candidate));
+
+  const parameterMatches = ramble.match(/\b\d+(?:\.\d+)?%?\b/g) ?? [];
+  const parameters = [...parameterMatches];
+
+  if (lower.includes('confidence')) {
+    parameters.push('confidence threshold');
+  }
+
+  const followUpTasks = sentences
+    .filter((sentence) => sentence.toLowerCase().includes('need to'))
+    .slice(0, 5);
+
+  const openQuestions: string[] = [];
+  if (ramble.includes('?')) {
+    openQuestions.push(...ramble.split('?').slice(0, -1).map((part) => `${part.trim()}?`).filter(Boolean));
+  }
+
+  if (lower.includes('confidence') && !openQuestions.some((question) => question.toLowerCase().includes('threshold'))) {
+    openQuestions.push('What confidence threshold should be used?');
+  }
+
+  return {
+    supportingNotes: ramble.trim() || taskName,
+    keyDetails,
+    artifacts,
+    parameters: Array.from(new Set(parameters)),
+    followUpTasks,
+    openQuestions,
+  };
+}
+
 function buildTaskFromRamble(ramble: string): Task {
   const lower = ramble.toLowerCase();
   const interest = scoreFromKeywords(lower, 'interest');
@@ -343,6 +443,7 @@ function buildTaskFromRamble(ramble: string): Task {
   const urgency = scoreFromKeywords(lower, 'urgency');
   const energyLevel = inferEnergyLevel(interest, challenge);
   const taskName = inferTaskName(ramble);
+  const context = inferContextFromRamble(ramble, taskName);
 
   return {
     id: buildTaskId(),
@@ -361,6 +462,7 @@ function buildTaskFromRamble(ramble: string): Task {
     oraclePlacement: inferPlacement(urgency, energyLevel, interest, challenge),
     status: 'To Do',
     createdAt: new Date().toISOString(),
+    context,
     captureDebug: {
       inputTranscript: ramble,
       source: 'fallback',

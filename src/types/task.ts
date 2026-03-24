@@ -22,6 +22,15 @@ export type CaptureDebug = {
   geminiRawResponse: string | null;
 };
 
+export type TaskContext = {
+  supportingNotes: string;
+  keyDetails: string[];
+  artifacts: string[];
+  parameters: string[];
+  followUpTasks: string[];
+  openQuestions: string[];
+};
+
 export type Task = {
   id: string;
   taskName: string;
@@ -34,5 +43,6 @@ export type Task = {
   oraclePlacement: OraclePlacement;
   status: TaskStatus;
   createdAt: string;
+  context?: TaskContext;
   captureDebug?: CaptureDebug;
 };
