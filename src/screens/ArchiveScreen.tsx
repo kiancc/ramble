@@ -1,5 +1,7 @@
-import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useState } from 'react';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
+import { TaskDetailModal } from '../components/TaskDetailModal';
 import type { Task } from '../types/task';
 
 type ArchiveScreenProps = {
@@ -15,39 +17,52 @@ function groupTasksByCategory(tasks: Task[]) {
 }
 
 export function ArchiveScreen({ tasks }: ArchiveScreenProps) {
+  const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const grouped = groupTasksByCategory(tasks);
   const categories = Object.keys(grouped).sort();
 
   return (
-    <ScrollView contentContainerStyle={styles.screen}>
-      <Text style={styles.eyebrow}>Vault</Text>
-      <Text style={styles.title}>All captured tasks</Text>
-      <Text style={styles.copy}>This is the full archive. Nothing gets lost here.</Text>
+    <>
+      <ScrollView contentContainerStyle={styles.screen}>
+        <Text style={styles.eyebrow}>Vault</Text>
+        <Text style={styles.title}>All captured tasks</Text>
+        <Text style={styles.copy}>Tap a task to inspect its full schema details.</Text>
 
-      {categories.length === 0 ? (
-        <View style={styles.emptyState}>
-          <Text style={styles.emptyTitle}>Nothing captured yet</Text>
-          <Text style={styles.emptyCopy}>
-            Once voice entries are saved, they will appear here for deep review.
-          </Text>
-        </View>
-      ) : (
-        categories.map((category) => (
-          <View key={category} style={styles.categoryCard}>
-            <Text style={styles.categoryTitle}>{category}</Text>
-
-            {grouped[category].map((task) => (
-              <View key={task.id} style={styles.taskRow}>
-                <Text style={styles.taskName}>{task.taskName}</Text>
-                <Text style={styles.taskMeta}>
-                  {task.status} • {task.energyLevel} • {task.oraclePlacement}
-                </Text>
-              </View>
-            ))}
+        {categories.length === 0 ? (
+          <View style={styles.emptyState}>
+            <Text style={styles.emptyTitle}>Nothing captured yet</Text>
+            <Text style={styles.emptyCopy}>
+              Once voice entries are saved, they will appear here for deep review.
+            </Text>
           </View>
-        ))
-      )}
-    </ScrollView>
+        ) : (
+          categories.map((category) => (
+            <View key={category} style={styles.categoryCard}>
+              <Text style={styles.categoryTitle}>{category}</Text>
+
+              {grouped[category].map((task) => (
+                <Pressable
+                  key={task.id}
+                  onPress={() => setSelectedTask(task)}
+                  style={styles.taskRow}
+                >
+                  <Text style={styles.taskName}>{task.taskName}</Text>
+                  <Text style={styles.taskMeta}>
+                    {task.status} • {task.energyLevel} • {task.oraclePlacement}
+                  </Text>
+                </Pressable>
+              ))}
+            </View>
+          ))
+        )}
+      </ScrollView>
+
+      <TaskDetailModal
+        task={selectedTask}
+        visible={selectedTask !== null}
+        onClose={() => setSelectedTask(null)}
+      />
+    </>
   );
 }
 

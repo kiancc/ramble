@@ -1,5 +1,7 @@
-import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useState } from 'react';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
+import { TaskDetailModal } from '../components/TaskDetailModal';
 import type { OraclePlacement, Task } from '../types/task';
 
 type OracleScreenProps = {
@@ -27,40 +29,54 @@ const oracleSections: OracleSection[] = [
 ];
 
 export function OracleScreen({ tasks }: OracleScreenProps) {
+  const [selectedTask, setSelectedTask] = useState<Task | null>(null);
+
   return (
-    <ScrollView contentContainerStyle={styles.screen}>
-      <Text style={styles.eyebrow}>Oracle</Text>
-      <Text style={styles.title}>Do this next</Text>
-      <Text style={styles.copy}>
-        This is your triage feed. Tasks are grouped by the executive-function buckets.
-      </Text>
+    <>
+      <ScrollView contentContainerStyle={styles.screen}>
+        <Text style={styles.eyebrow}>Oracle</Text>
+        <Text style={styles.title}>Do this next</Text>
+        <Text style={styles.copy}>
+          Tap any task for its full schema. Tasks are grouped by executive-function buckets.
+        </Text>
 
-      {oracleSections.map((section) => {
-        const sectionTasks = tasks.filter(
-          (task) => task.oraclePlacement === section.key && task.status !== 'Done',
-        );
+        {oracleSections.map((section) => {
+          const sectionTasks = tasks.filter(
+            (task) => task.oraclePlacement === section.key && task.status !== 'Done',
+          );
 
-        return (
-          <View key={section.key} style={styles.card}>
-            <Text style={styles.cardLabel}>{section.key}</Text>
+          return (
+            <View key={section.key} style={styles.card}>
+              <Text style={styles.cardLabel}>{section.key}</Text>
 
-            {sectionTasks.length === 0 ? (
-              <Text style={styles.cardText}>{section.emptyText}</Text>
-            ) : (
-              sectionTasks.slice(0, 3).map((task) => (
-                <View key={task.id} style={styles.taskItem}>
-                  <Text style={styles.taskTitle}>{task.taskName}</Text>
-                  <Text style={styles.taskMeta}>
-                    {task.category} • {task.energyLevel} • {task.status}
-                  </Text>
-                  <Text style={styles.cardText}>{task.nextPhysicalAction}</Text>
-                </View>
-              ))
-            )}
-          </View>
-        );
-      })}
-    </ScrollView>
+              {sectionTasks.length === 0 ? (
+                <Text style={styles.cardText}>{section.emptyText}</Text>
+              ) : (
+                sectionTasks.slice(0, 3).map((task) => (
+                  <Pressable
+                    key={task.id}
+                    onPress={() => setSelectedTask(task)}
+                    style={styles.taskItem}
+                  >
+                    <Text style={styles.taskTitle}>{task.taskName}</Text>
+                    <Text style={styles.taskMeta}>
+                      {task.category} • {task.energyLevel} • {task.status}
+                    </Text>
+                    <Text style={styles.cardText}>{task.nextPhysicalAction}</Text>
+                  </Pressable>
+                ))
+              )}
+            </View>
+          );
+        })}
+      </ScrollView>
+
+      <TaskDetailModal
+        task={selectedTask}
+        visible={selectedTask !== null}
+        onClose={() => setSelectedTask(null)}
+      />
+    </>
   );
 }
 
